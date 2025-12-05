@@ -13,8 +13,10 @@ var DefaultConfig = &Config{
 
 type Updater struct {
 	*Config
-	updates map[string]common.Update
-	patches map[int64]common.Patch
+	variablesNotFound map[string]struct{}
+	updates           map[string]common.Update // Map of update with variable name as a key
+	updatesArr        []common.Update
+	patches           map[int64]common.Patch
 }
 
 func New(options ...Option) *Updater {
@@ -40,5 +42,6 @@ func (u *Updater) AddUpdates(updates []common.Update) error {
 
 func (u *Updater) FromStream(s common.ParserStream) (map[int64]common.Patch, error) {
 	var lineIdx int64 = 0
+
 	return u.patches, nil
 }
