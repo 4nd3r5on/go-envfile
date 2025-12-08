@@ -56,6 +56,8 @@ type ParsedLine struct {
 	VariableValPart *VariableValPartData
 	SectionData     *SectionData // if line is within a section
 
+	SectionStartEndInlineComment string
+
 	UnterminatedValueLines int
 }
 

@@ -3,16 +3,23 @@ package parser
 import (
 	"bufio"
 	"errors"
-	"github.com/4nd3r5on/go-envfile/common"
 	"regexp"
 	"strings"
 	"unicode"
+
+	"github.com/4nd3r5on/go-envfile/common"
 )
 
 var (
-	SectionStartRe = regexp.MustCompile(`(?m)^# \[SECTION:\s*([^]]+)].*$`)
-	SectionEndRe   = regexp.MustCompile(`(?m)^# \[SECTION_END:\s*([^]]+)].*$`)
+	SectionStartRe = regexp.MustCompile(`^# \[SECTION:\s*([^]]+)\](.*)$`)
+	SectionEndRe   = regexp.MustCompile(`^# \[SECTION_END:\s*([^]]+)\](.*)$`)
 )
+
+type ValStartEnd struct {
+	Val   string
+	Start int
+	End   int
+}
 
 // Parse everything from a scanner to an array or parsed lines
 // useful when reading files
@@ -123,12 +130,6 @@ func ExtractKey(line string, equalIdx int) (ValStartEnd, error) {
 	}, nil
 }
 
-type ValStartEnd struct {
-	Val   string
-	Start int
-	End   int
-}
-
 // ExtractValue extracts the value from line given the position of '='
 // Returns value string, whether it's terminated, and any error
 func ExtractValue(line string, equalIdx int) (data ValStartEnd, isTerminated bool, terminator byte, err error) {
@@ -220,4 +221,36 @@ func ParseVariable(line string) (key, val ValStartEnd, isTerminated bool, termin
 	}
 
 	return key, val, isTerminated, terminator, nil
+}
+
+// MatchSectionStart checks if a line is a section start marker and extracts the name and comment.
+// Returns:
+//   - isSectionStart: true if the line matches the section start pattern
+//   - name: the section name (trimmed of whitespace)
+//   - comment: any text after the closing bracket (trimmed of leading whitespace)
+func MatchSectionStart(line string) (isSectionStart bool, name, comment string) {
+	matches := SectionStartRe.FindStringSubmatch(line)
+	if matches == nil {
+		return false, "", ""
+	}
+
+	name = strings.TrimSpace(matches[1])
+	comment = strings.TrimSpace(matches[2])
+	return true, name, comment
+}
+
+// MatchSectionEnd checks if a line is a section end marker and extracts the name and comment.
+// Returns:
+//   - isSectionEnd: true if the line matches the section end pattern
+//   - name: the section name (trimmed of whitespace)
+//   - comment: any text after the closing bracket (trimmed of leading whitespace)
+func MatchSectionEnd(line string) (isSectionEnd bool, name, comment string) {
+	matches := SectionEndRe.FindStringSubmatch(line)
+	if matches == nil {
+		return false, "", ""
+	}
+
+	name = strings.TrimSpace(matches[1])
+	comment = strings.TrimSpace(matches[2])
+	return true, name, comment
 }
