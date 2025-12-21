@@ -9,13 +9,13 @@ type Config struct {
 
 type Option func(*Config)
 
-func WithLogger(l *slog.Logger) Option {
+func SetLogger(l *slog.Logger) Option {
 	return func(c *Config) {
 		c.Logger = l
 	}
 }
 
-func WithIgnoreSections(ignore bool) Option {
+func SetIgnoreSections(ignore bool) Option {
 	return func(c *Config) {
 		c.IgnoreSections = ignore
 	}

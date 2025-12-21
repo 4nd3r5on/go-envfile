@@ -7,12 +7,8 @@ type Parser interface {
 }
 
 type ParserStream interface {
+	GetLineIdx() int64
 	Next() (ParsedLine, error) // parses until io.EOF
-}
-
-type Updater interface {
-	AddUpdates([]Update) error
-	FromStream(ParserStream) (map[int64]Patch, error)
 }
 
 // Parser
@@ -35,16 +31,20 @@ type VariableData struct {
 	Prefix       string // Everything before the value (export, whitespace, key, =, etc)
 	Suffix       string // Everything after the value (whitespace, comments)
 	IsTerminated bool
+	IsQuoted     bool
+	Quote        byte
 }
 
 type VariableValPartData struct {
 	Value        string // What value did variable have
 	Suffix       string // Everything after the value (whitespace, comments)
 	IsTerminated bool   // If variable was terminated on that line
+	Quote        byte
 }
 
 type SectionData struct {
-	Name string
+	Variables map[string]struct{} // key value quick lookup for sections
+	Name      string
 }
 
 // ParsedLine represents a parsed line from .env file
@@ -58,6 +58,7 @@ type ParsedLine struct {
 
 	SectionStartEndInlineComment string
 
+	// if value wasn't terminated > 0. 0 if nothing to terminate or terminated the same line
 	UnterminatedValueLines int
 }
 
@@ -66,15 +67,26 @@ type ParsedLine struct {
 type Update struct {
 	Key     string
 	Value   string
-	Section string
+	Section string // empty string for no section
 
-	Prefix        string // for "export " before key for example
+	// If variable already exists -- won't move section for this specific variable
+	IgnoreSection bool
+
+	Prefix string // for "export " before key for example
+	// Works only for adding variables
+	// If variable existed before -- keeping existing suffix
 	InlineComment string
 }
 
 // Patch represents changes that u need to put into the file
+// Warning: Insert And InsertAfter don't automatically add new lines
 type Patch struct {
-	LineIdx    int64  // target line
-	Insert     string // insert before the target line
-	RemoveLine bool   // removes the target line
+	LineIdx      int64 // target line
+	ShouldInsert bool
+	Insert       string // insert before the target line
+
+	ShouldInsertAfter bool // same as should insert, but next line
+	InsertAfter       string
+
+	RemoveLine bool // removes the target line
 }

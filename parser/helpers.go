@@ -2,83 +2,43 @@ package parser
 
 import (
 	"bufio"
+	"bytes"
 	"errors"
-	"regexp"
+	"io"
 	"strings"
-	"unicode"
 
 	"github.com/4nd3r5on/go-envfile/common"
 )
 
-var (
-	SectionStartRe = regexp.MustCompile(`^# \[SECTION:\s*([^]]+)\](.*)$`)
-	SectionEndRe   = regexp.MustCompile(`^# \[SECTION_END:\s*([^]]+)\](.*)$`)
-)
+func ReadRawLine(reader *bufio.Reader) ([]byte, error) {
+	var buf bytes.Buffer
 
-type ValStartEnd struct {
-	Val   string
-	Start int
-	End   int
-}
-
-// Parse everything from a scanner to an array or parsed lines
-// useful when reading files
-func Parse(p Parser, s *bufio.Scanner) ([]common.ParsedLine, error) {
-	lines := make([]common.ParsedLine, 0)
-
-	for s.Scan() {
-		line, err := p.ParseLine(s.Text())
+	for {
+		b, err := reader.ReadByte()
 		if err != nil {
+			if err == io.EOF && buf.Len() > 0 {
+				// Return last line without newline
+				return buf.Bytes(), nil
+			}
 			return nil, err
 		}
-		lines = append(lines, line)
-	}
 
-	return lines, nil
-}
+		buf.WriteByte(b)
 
-// SkipSpaces returns the first index after spaces (starts skipping from pos)
-// Returns len(line) if all remaining characters are spaces
-func SkipSpaces(line string, pos int) int {
-	for i := pos; i < len(line); i++ {
-		if !unicode.IsSpace(rune(line[i])) {
-			return i
+		// If LF appears, we end the line (handles LF and CRLF)
+		if b == '\n' {
+			return buf.Bytes(), nil
+		}
+
+		if b == '\r' {
+			next, err := reader.Peek(1)
+			if err == nil && len(next) == 1 && next[0] == '\n' {
+				reader.ReadByte()   // consume \n
+				buf.WriteByte('\n') // append it
+			}
+			return buf.Bytes(), nil
 		}
 	}
-	return len(line)
-}
-
-// UntilSpace returns the index of the first space starting from pos
-// Returns len(line) if no space is found
-func UntilSpace(line string, pos int) int {
-	for i := pos; i < len(line); i++ {
-		if unicode.IsSpace(rune(line[i])) {
-			return i
-		}
-	}
-	return len(line)
-}
-
-// SkipSpacesBack returns the last index (moving left from pos) that is NOT a space
-// Returns -1 if all characters from 0 to pos are spaces
-func SkipSpacesBack(line string, pos int) int {
-	for i := pos; i >= 0; i-- {
-		if !unicode.IsSpace(rune(line[i])) {
-			return i
-		}
-	}
-	return -1
-}
-
-// UntilSpaceBack returns the index of the first space encountered moving left from pos
-// Returns -1 if no space is found
-func UntilSpaceBack(line string, pos int) int {
-	for i := pos; i >= 0; i-- {
-		if unicode.IsSpace(rune(line[i])) {
-			return i
-		}
-	}
-	return -1
 }
 
 // IsLineComment checks if a line is a comment (starts with # after optional spaces)
@@ -86,7 +46,7 @@ func IsLineComment(line string) bool {
 	if len(line) == 0 {
 		return false
 	}
-	lineStartsAt := SkipSpaces(line, 0)
+	lineStartsAt := common.SkipSpaces(line, 0)
 	if lineStartsAt >= len(line) {
 		return false
 	}
@@ -97,7 +57,7 @@ func DetectLineType(line string) common.LineType {
 	if len(line) == 0 {
 		return common.LineTypeRaw
 	}
-	lineStartsAt := SkipSpaces(line, 0)
+	lineStartsAt := common.SkipSpaces(line, 0)
 	if lineStartsAt >= len(line) {
 		return common.LineTypeRaw
 	}
@@ -109,148 +69,137 @@ func DetectLineType(line string) common.LineType {
 
 // ExtractKey extracts the key from line given the position of '='
 // Returns the key string or error if invalid
-func ExtractKey(line string, equalIdx int) (ValStartEnd, error) {
+func ExtractKey(line string, equalIdx int) (KeyData, error) {
 	if equalIdx == 0 {
-		return ValStartEnd{}, errors.New("no key: equals sign at start of line")
+		return KeyData{}, errors.New("no key: equals sign at start of line")
 	}
 
 	// Find last non-space before '='
-	keyEnd := SkipSpacesBack(line, equalIdx-1)
+	keyEnd := common.SkipSpacesBack(line, equalIdx-1)
 	if keyEnd == -1 {
-		return ValStartEnd{}, errors.New("no key: only spaces before equals sign")
+		return KeyData{}, errors.New("no key: only spaces before equals sign")
 	}
 
 	// Find start of a key
-	keyStart := UntilSpaceBack(line, keyEnd) + 1
+	keyStart := common.UntilSpaceBack(line, keyEnd) + 1
 
-	return ValStartEnd{
-		Val:   line[keyStart : keyEnd+1],
+	return KeyData{
+		Key:   line[keyStart : keyEnd+1],
 		Start: keyStart,
 		End:   keyEnd,
 	}, nil
 }
 
 // ExtractValue extracts the value from line given the position of '='
-// Returns value string, whether it's terminated, and any error
-func ExtractValue(line string, equalIdx int) (data ValStartEnd, isTerminated bool, terminator byte, err error) {
+// Returns structured value data and any error
+func ExtractValue(line string, equalIdx int) (ValueData, error) {
 	// Find value start
-	valStart := SkipSpaces(line, equalIdx+1)
+	valStart := common.SkipSpaces(line, equalIdx+1)
 	if valStart >= len(line) {
-		return ValStartEnd{}, false, byte(0), errors.New("no value: nothing after equals sign")
+		return ValueData{}, errors.New("no value: nothing after equals sign")
 	}
 
 	// Check if quoted
-	if line[valStart] == '"' || line[valStart] == '\'' {
+	char := line[valStart]
+	if char == '"' || char == '\'' {
 		return extractQuotedValue(line, valStart)
 	}
 
 	// Unquoted value
-	return extractUnquotedValue(line, valStart), true, byte(0), nil
+	return extractUnquotedValue(line, valStart), nil
 }
 
-func findTerminator(line string, pos int, terminator byte) int {
+// findTerminator finds the closing quote, accounting for escaping
+func FindTerminator(line string, pos int, terminator byte) int {
 	bsCount := 0 // count of consecutive backslashes
-
 	for i := pos + 1; i < len(line); i++ {
 		c := line[i]
-
 		if c == '\\' {
 			bsCount++
 			continue
 		}
-
 		if c == terminator && bsCount%2 == 0 {
 			return i
 		}
-
 		bsCount = 0
 	}
 	return -1
 }
 
 // extractQuotedValue extracts a quoted value starting at pos
-func extractQuotedValue(line string, pos int) (data ValStartEnd, isTerminated bool, terminator byte, err error) {
+func extractQuotedValue(line string, pos int) (ValueData, error) {
 	quote := line[pos]
-	terminatorPos := findTerminator(line, pos, quote)
-	if terminatorPos < 0 {
-		// Unterminated
-		return ValStartEnd{
-			Val:   line[pos:],
-			Start: pos,
-			End:   len(line) - 1,
-		}, false, quote, nil
+	terminatorPos := FindTerminator(line, pos, quote)
+
+	valueType := ValueDoubleQuoted
+	if quote == '\'' {
+		valueType = ValueSingleQuoted
 	}
-	return ValStartEnd{
-		Val:   line[pos : terminatorPos+1],
-		Start: pos,
-		End:   terminatorPos,
-	}, true, byte(0), nil
+
+	if terminatorPos < 0 {
+		// Unterminated quote
+		raw := line[pos:]
+		content := raw[1:] // Remove opening quote
+		return ValueData{
+			Raw:          raw,
+			Content:      content,
+			Start:        pos,
+			End:          len(line) - 1,
+			Type:         valueType,
+			IsTerminated: false,
+		}, nil
+	}
+
+	// Properly terminated quote
+	raw := line[pos : terminatorPos+1]
+	content := raw[1 : len(raw)-1] // Remove both quotes
+	return ValueData{
+		Raw:          raw,
+		Content:      content,
+		Start:        pos,
+		End:          terminatorPos,
+		Type:         valueType,
+		IsTerminated: true,
+	}, nil
 }
 
 // extractUnquotedValue extracts an unquoted value starting at pos
-func extractUnquotedValue(line string, pos int) ValStartEnd {
-	valEnd := UntilSpace(line, pos)
-	return ValStartEnd{
-		Val:   line[pos:valEnd],
-		Start: pos,
-		End:   valEnd - 1,
+func extractUnquotedValue(line string, pos int) ValueData {
+	valEnd := common.UntilSpace(line, pos)
+	raw := line[pos:valEnd]
+	return ValueData{
+		Raw:          raw,
+		Content:      raw, // For unquoted, raw and content are the same
+		Start:        pos,
+		End:          valEnd - 1,
+		Type:         ValueUnquoted,
+		IsTerminated: true,
 	}
 }
 
 // ParseVariable parses a line for a variable assignment (KEY=VALUE)
-// Returns isVariable, key, value, isTerminated, and error
-func ParseVariable(line string) (key, val ValStartEnd, isTerminated bool, terminator byte, err error) {
-	// Check if comment
-
+// Returns variable data and error
+func ParseVariable(line string) (VariableData, error) {
 	// Find equals sign
 	equalIdx := strings.IndexByte(line, '=')
 	if equalIdx == -1 {
-		return ValStartEnd{}, ValStartEnd{}, false, byte(0), errors.New("no equals sign found, no variable declaration")
+		return VariableData{}, errors.New("no equals sign found, no variable declaration")
 	}
 
 	// Extract key
-	key, err = ExtractKey(line, equalIdx)
+	key, err := ExtractKey(line, equalIdx)
 	if err != nil {
-		return ValStartEnd{}, ValStartEnd{}, false, byte(0), err
+		return VariableData{}, err
 	}
 
 	// Extract value
-	val, isTerminated, terminator, err = ExtractValue(line, equalIdx)
+	val, err := ExtractValue(line, equalIdx)
 	if err != nil {
-		return ValStartEnd{}, ValStartEnd{}, false, byte(0), err
+		return VariableData{}, err
 	}
 
-	return key, val, isTerminated, terminator, nil
-}
-
-// MatchSectionStart checks if a line is a section start marker and extracts the name and comment.
-// Returns:
-//   - isSectionStart: true if the line matches the section start pattern
-//   - name: the section name (trimmed of whitespace)
-//   - comment: any text after the closing bracket (trimmed of leading whitespace)
-func MatchSectionStart(line string) (isSectionStart bool, name, comment string) {
-	matches := SectionStartRe.FindStringSubmatch(line)
-	if matches == nil {
-		return false, "", ""
-	}
-
-	name = strings.TrimSpace(matches[1])
-	comment = strings.TrimSpace(matches[2])
-	return true, name, comment
-}
-
-// MatchSectionEnd checks if a line is a section end marker and extracts the name and comment.
-// Returns:
-//   - isSectionEnd: true if the line matches the section end pattern
-//   - name: the section name (trimmed of whitespace)
-//   - comment: any text after the closing bracket (trimmed of leading whitespace)
-func MatchSectionEnd(line string) (isSectionEnd bool, name, comment string) {
-	matches := SectionEndRe.FindStringSubmatch(line)
-	if matches == nil {
-		return false, "", ""
-	}
-
-	name = strings.TrimSpace(matches[1])
-	comment = strings.TrimSpace(matches[2])
-	return true, name, comment
+	return VariableData{
+		Key:   key,
+		Value: val,
+	}, nil
 }

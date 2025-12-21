@@ -2,46 +2,43 @@ package parser
 
 import (
 	"bufio"
-	"io"
-	"os"
+	"bytes"
 
 	"github.com/4nd3r5on/go-envfile/common"
 )
 
 type FileParser struct {
-	*Parser
-	*bufio.Scanner
-	File       *os.File
-	CurrentIdx int64
+	common.Parser
+	reader      *bufio.Reader
+	CurrentIdx  int64
+	keepNewLine bool
 }
 
-func NewFileParser(p *Parser, path string, options ...Option) (*FileParser, error) {
+func NewFileParser(p common.Parser, reader *bufio.Reader, keepNewLine bool, options ...Option) *FileParser {
 	if p == nil {
 		p = New(options...)
 	}
-
-	file, err := os.Open(path)
-	if err != nil {
-		return nil, err
-	}
-	scanner := bufio.NewScanner(file)
-
 	return &FileParser{
-		Parser:     p,
-		File:       file,
-		Scanner:    scanner,
-		CurrentIdx: 0,
-	}, nil
+		Parser:      p,
+		reader:      reader,
+		CurrentIdx:  0,
+		keepNewLine: keepNewLine,
+	}
 }
 
 func (p *FileParser) Next() (common.ParsedLine, error) {
-	if p.Scanner.Scan() {
-		p.CurrentIdx++
-		return p.Parser.ParseLine(p.Scanner.Text())
+	line, err := ReadRawLine(p.reader)
+	if err != nil {
+		return common.ParsedLine{}, err
 	}
-	return common.ParsedLine{}, io.EOF
+
+	p.CurrentIdx++
+
+	if p.keepNewLine {
+		return p.Parser.ParseLine(string(line))
+	}
+	clean := bytes.TrimRight(line, "\r\n")
+	return p.Parser.ParseLine(string(clean))
 }
 
-func (p *FileParser) Close() error {
-	return p.File.Close()
-}
+func (p *FileParser) GetLineIdx() int64 { return p.CurrentIdx }

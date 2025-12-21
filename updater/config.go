@@ -1,6 +1,9 @@
 package updater
 
-import "log/slog"
+import (
+	"log/slog"
+	"maps"
+)
 
 type UpdateMode uint8
 
@@ -11,34 +14,46 @@ const (
 )
 
 type Config struct {
-	Logger *slog.Logger
-	Mode   UpdateMode
+	Logger        *slog.Logger
+	Mode          UpdateMode
+	EnsureNewLine bool
+
+	SectionStartComments map[string]string
+	SectionEndComments   map[string]string
 }
 
 type Option func(*Config)
 
-func WithLogger(l *slog.Logger) Option {
-	return func(c *Config) {
-		c.Logger = l
-	}
+func SetLogger(l *slog.Logger) Option {
+	return func(c *Config) { c.Logger = l }
 }
 
-func WithReplace(v bool) Option {
-	return func(c *Config) {
-		setFlag(&c.Mode, ModeReplace, v)
-	}
+func SetEnsureNewLine(v bool) Option {
+	return func(c *Config) { c.EnsureNewLine = v }
 }
 
-func WithAdd(v bool) Option {
-	return func(c *Config) {
-		setFlag(&c.Mode, ModeAdd, v)
-	}
+// As a parameter takes map of section name : comment
+// If section name is empty -- applied by default for every section
+func SetSectionStartComments(comments map[string]string) Option {
+	return func(c *Config) { maps.Copy(c.SectionStartComments, comments) }
 }
 
-func WithMoveSection(v bool) Option {
-	return func(c *Config) {
-		setFlag(&c.Mode, ModeMoveSection, v)
-	}
+// As a parameter takes map of section name : comment
+// If section name is empty -- applied by default for every section
+func SetSectionEndComments(comments map[string]string) Option {
+	return func(c *Config) { maps.Copy(c.SectionEndComments, comments) }
+}
+
+func SetReplace(v bool) Option {
+	return func(c *Config) { setFlag(&c.Mode, ModeReplace, v) }
+}
+
+func SetAdd(v bool) Option {
+	return func(c *Config) { setFlag(&c.Mode, ModeAdd, v) }
+}
+
+func SetMoveSection(v bool) Option {
+	return func(c *Config) { setFlag(&c.Mode, ModeMoveSection, v) }
 }
 
 func setFlag(m *UpdateMode, mask UpdateMode, on bool) {

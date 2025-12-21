@@ -49,7 +49,7 @@ func (p *Parser) ParseLine(line string) (common.ParsedLine, error) {
 
 // handleUnterminatedValue processes continuation lines for unterminated multi-line values
 func (p *Parser) handleUnterminatedValue(line string) (common.ParsedLine, error) {
-	terminator := findTerminator(line, 0, p.terminator)
+	terminator := FindTerminator(line, 0, p.terminator)
 
 	if terminator < 0 {
 		// Value continues on next line
@@ -61,6 +61,7 @@ func (p *Parser) handleUnterminatedValue(line string) (common.ParsedLine, error)
 				Value:        line,
 				Suffix:       "",
 				IsTerminated: false,
+				Quote:        p.terminator,
 			},
 			UnterminatedValueLines: p.unterminatedValueLines,
 		}, nil
@@ -80,6 +81,7 @@ func (p *Parser) handleUnterminatedValue(line string) (common.ParsedLine, error)
 			Value:        val,
 			Suffix:       suffix,
 			IsTerminated: true,
+			Quote:        p.terminator,
 		},
 		UnterminatedValueLines: p.unterminatedValueLines + 1,
 	}
@@ -94,11 +96,11 @@ func (p *Parser) handleUnterminatedValue(line string) (common.ParsedLine, error)
 // handleCommentLine processes comment lines, including section markers
 func (p *Parser) handleCommentLine(line string) (common.ParsedLine, error) {
 	if !p.Config.IgnoreSections {
-		if isSectionStart, name, comment := MatchSectionStart(line); isSectionStart {
-			return p.handleSectionStart(line, name, comment), nil
+		if isSectionStart, data := common.MatchSectionStart(line); isSectionStart {
+			return p.handleSectionStart(line, data.Name, data.Comment), nil
 		}
-		if isSectionEnd, name, comment := MatchSectionEnd(line); isSectionEnd {
-			return p.handleSectionEnd(line, name, comment), nil
+		if isSectionEnd, data := common.MatchSectionEnd(line); isSectionEnd {
+			return p.handleSectionEnd(line, data.Name, data.Comment), nil
 		}
 	}
 
@@ -112,7 +114,8 @@ func (p *Parser) handleCommentLine(line string) (common.ParsedLine, error) {
 // handleSectionStart processes section start markers
 func (p *Parser) handleSectionStart(line, name, comment string) common.ParsedLine {
 	p.currentSection = &common.SectionData{
-		Name: name,
+		Variables: make(map[string]struct{}),
+		Name:      name,
 	}
 	return common.ParsedLine{
 		Type:                         common.LineTypeSectionStart,
@@ -149,25 +152,38 @@ func (p *Parser) handleRawLine(line string) common.ParsedLine {
 
 // handleVariableLine processes variable assignment lines
 func (p *Parser) handleVariableLine(line string) (common.ParsedLine, error) {
-	key, val, isTerminated, terminator, err := ParseVariable(line)
+	data, err := ParseVariable(line)
 	if err != nil {
 		return common.ParsedLine{}, err
 	}
+	if p.currentSection != nil {
+		p.currentSection.Variables[data.Key.Key] = struct{}{}
+	}
 
-	if !isTerminated {
+	isQuoted, terminator := GetQuoteFromValType(data.Value.Type)
+
+	if !data.Value.IsTerminated {
 		p.unterminatedValueLines++
 		p.terminator = terminator
+	}
+
+	var suffix string
+	suffixStart := data.Value.End + 1
+	if suffixStart < len(line) {
+		suffix = line[suffixStart:]
 	}
 
 	return common.ParsedLine{
 		Type:    common.LineTypeVar,
 		RawLine: line,
 		Variable: &common.VariableData{
-			Key:          key.Val,
-			Value:        val.Val,
-			Prefix:       line[:val.Start],
-			Suffix:       line[val.Start:val.End],
-			IsTerminated: isTerminated,
+			Key:          data.Key.Key,
+			Value:        data.Value.Content,
+			Prefix:       line[:data.Value.Start],
+			Suffix:       suffix,
+			IsTerminated: data.Value.IsTerminated,
+			IsQuoted:     isQuoted,
+			Quote:        terminator,
 		},
 		UnterminatedValueLines: p.unterminatedValueLines,
 		SectionData:            p.currentSection,
