@@ -1,45 +1,11 @@
 package parser
 
 import (
-	"bufio"
-	"bytes"
 	"errors"
-	"io"
 	"strings"
 
 	"github.com/4nd3r5on/go-envfile/common"
 )
-
-func ReadRawLine(reader *bufio.Reader) ([]byte, error) {
-	var buf bytes.Buffer
-
-	for {
-		b, err := reader.ReadByte()
-		if err != nil {
-			if err == io.EOF && buf.Len() > 0 {
-				// Return last line without newline
-				return buf.Bytes(), nil
-			}
-			return nil, err
-		}
-
-		buf.WriteByte(b)
-
-		// If LF appears, we end the line (handles LF and CRLF)
-		if b == '\n' {
-			return buf.Bytes(), nil
-		}
-
-		if b == '\r' {
-			next, err := reader.Peek(1)
-			if err == nil && len(next) == 1 && next[0] == '\n' {
-				reader.ReadByte()   // consume \n
-				buf.WriteByte('\n') // append it
-			}
-			return buf.Bytes(), nil
-		}
-	}
-}
 
 // IsLineComment checks if a line is a comment (starts with # after optional spaces)
 func IsLineComment(line string) bool {

@@ -27,7 +27,7 @@ func NewFileParser(p common.Parser, reader *bufio.Reader, keepNewLine bool, opti
 }
 
 func (p *FileParser) Next() (common.ParsedLine, error) {
-	line, err := ReadRawLine(p.reader)
+	line, err := common.ReadLineWithEOL(p.reader)
 	if err != nil {
 		return common.ParsedLine{}, err
 	}

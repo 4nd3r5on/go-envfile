@@ -8,11 +8,25 @@ import (
 	"github.com/4nd3r5on/go-envfile/common"
 )
 
+type Update struct {
+	Key     string
+	Value   string
+	Section string // empty string for no section
+
+	// If variable already exists -- won't move section for this specific variable
+	IgnoreSection bool
+
+	Prefix string // for "export " before key for example
+	// Works only for adding variables
+	// If variable existed before -- keeping existing suffix
+	InlineComment string
+}
+
 // FromStream processes a parser stream and generates patches based on the provided updates.
 // It returns a map of patches keyed by line index to be applied to the original content.
 func FromStream(
 	s common.ParserStream,
-	updates []common.Update,
+	updates []Update,
 	options ...Option,
 ) (map[int64]common.Patch, error) {
 	cfg := &Config{
@@ -26,7 +40,7 @@ func FromStream(
 		option(cfg)
 	}
 
-	updateMap := make(map[string]common.Update, len(updates))
+	updateMap := make(map[string]Update, len(updates))
 	for _, update := range updates {
 		if _, exists := updateMap[update.Key]; exists {
 			return nil, fmt.Errorf("duplicate update for key %q: each key must appear only once in updates", update.Key)
@@ -78,7 +92,6 @@ func FromStream(
 				return nil, fmt.Errorf("line %d: variable line detected but Variable is nil", lineIdx)
 			}
 
-			fmt.Printf("PL: %+v\n", parsedLine.Variable)
 			varKey := parsedLine.Variable.Key
 			varLinesBuffer := []common.ParsedLine{parsedLine}
 
@@ -193,14 +206,16 @@ func FromStream(
 
 	// Add file end content
 	if addToFileEnd != "" {
-		cfg.Logger.Debug("adding content to file end", "line", lineIdx-1, "length", len(addToFileEnd))
-		existingPatch, hasPatch := patchMap[lineIdx-1]
+		lineIdx := max(0, lineIdx-1)
+
+		cfg.Logger.Debug("adding content to file end", "line", lineIdx, "length", len(addToFileEnd))
+		existingPatch, hasPatch := patchMap[lineIdx]
 		if hasPatch {
 			existingPatch.InsertAfter += addToFileEnd
-			patchMap[lineIdx-1] = existingPatch
+			patchMap[lineIdx] = existingPatch
 		} else {
-			patchMap[lineIdx-1] = common.Patch{
-				LineIdx:           lineIdx - 1,
+			patchMap[lineIdx] = common.Patch{
+				LineIdx:           lineIdx,
 				ShouldInsertAfter: true,
 				InsertAfter:       addToFileEnd,
 			}
@@ -226,7 +241,7 @@ func parseUntilTerminated(s common.ParserStream, startLine int64, varKey string,
 		}
 
 		if parsedLine.VariableValPart == nil {
-			return nil, fmt.Errorf("continuation line missing value part (line type: %s)", parsedLine.Type)
+			return nil, fmt.Errorf("continuation line missing value part (line type: %d)", parsedLine.Type)
 		}
 
 		// Validate continuity: line number should match buffer position

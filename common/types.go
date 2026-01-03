@@ -1,5 +1,13 @@
 package common
 
+type Span[T comparable] struct {
+	Start T
+	End   T
+}
+
+// ByteSpan = [start,end] byte offsets
+type ByteSpan Span[int64]
+
 // Interfaces
 
 type Parser interface {
@@ -63,20 +71,6 @@ type ParsedLine struct {
 }
 
 // Updater
-
-type Update struct {
-	Key     string
-	Value   string
-	Section string // empty string for no section
-
-	// If variable already exists -- won't move section for this specific variable
-	IgnoreSection bool
-
-	Prefix string // for "export " before key for example
-	// Works only for adding variables
-	// If variable existed before -- keeping existing suffix
-	InlineComment string
-}
 
 // Patch represents changes that u need to put into the file
 // Warning: Insert And InsertAfter don't automatically add new lines

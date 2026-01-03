@@ -14,7 +14,7 @@ type AddVariable struct {
 
 // FormatVar creates a formatted variable line from an update and optional original data.
 // Takes value from the update while preserving formatting from the original (like comment and prefix if exists).
-func FormatVar(update common.Update, orig *common.VariableData, ensureNewLine bool) string {
+func FormatVar(update Update, orig *common.VariableData, ensureNewLine bool) string {
 	var (
 		prefix string
 		suffix string
@@ -109,7 +109,7 @@ func reconstructMultiLineValue(origLines []common.ParsedLine) string {
 // Returns an UpdateBlock containing all necessary patches and optional move information.
 func processVarUpdate(
 	lineIdx int64,
-	update common.Update,
+	update Update,
 	origLines []common.ParsedLine,
 	ensureNewLine bool,
 	logger *slog.Logger,
