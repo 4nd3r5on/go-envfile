@@ -1,0 +1,5 @@
+cmd/
+.env
+*.env
+*.tmp
+.idea
