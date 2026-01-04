@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log/slog"
 
 	"github.com/4nd3r5on/go-envfile/common"
 )
@@ -37,34 +36,6 @@ func FromStream(
 
 		if err = updater.HandleParsedLine(lineIdx, parsedLine); err != nil {
 			return nil, err
-		}
-	}
-}
-
-// parseUntilTerminated reads continuation lines until the value is terminated.
-func parseUntilTerminated(s common.ParserStream, startLine int64, varKey string, logger *slog.Logger) ([]common.ParsedLine, error) {
-	buf := make([]common.ParsedLine, 0)
-
-	for {
-		parsedLine, err := s.Next()
-		if errors.Is(err, io.EOF) {
-			return nil, fmt.Errorf("unexpected end of input: multi-line value for %q starting at line %d was not terminated", varKey, startLine)
-		}
-
-		if err != nil {
-			return nil, fmt.Errorf("error reading continuation line: %w", err)
-		}
-
-		if parsedLine.VariableValPart == nil {
-			return nil, fmt.Errorf("continuation line missing value part (line type: %d)", parsedLine.Type)
-		}
-
-		buf = append(buf, parsedLine)
-
-		if parsedLine.VariableValPart.IsTerminated {
-			logger.Debug("multi-line value terminated", "key", varKey, "total_continuation_lines", len(buf))
-
-			return buf, nil
 		}
 	}
 }

@@ -42,8 +42,8 @@ func ScanLineOffsetsReader(r Reader, patches map[int64]Patch, logger *slog.Logge
 	out := make(map[int64]ByteSpan, len(patches))
 
 	var (
-		offset  int64 = 0
-		lineIdx int64 = 0
+		offset  int64
+		lineIdx int64
 	)
 
 	for {

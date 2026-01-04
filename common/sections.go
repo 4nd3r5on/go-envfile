@@ -28,6 +28,7 @@ func MakeSectionStart(
 	}
 
 	var sb strings.Builder
+
 	sb.WriteString("# [SECTION: ")
 	sb.WriteString(name)
 	sb.WriteByte(']')
@@ -56,6 +57,7 @@ func MakeSectionEnd(
 	}
 
 	var sb strings.Builder
+
 	sb.WriteString("# [SECTION_END: ")
 	sb.WriteString(name)
 	sb.WriteByte(']')

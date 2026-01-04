@@ -3,6 +3,7 @@ package common
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"io"
 	"log/slog"
 )
@@ -39,7 +40,10 @@ func ReadLineWithEOL(reader Reader) ([]byte, error) {
 		if b == '\r' {
 			next, err := reader.Peek(1)
 			if err == nil && len(next) == 1 && next[0] == '\n' {
-				reader.ReadByte()   // consume \n
+				_, err = reader.ReadByte() // consume \n
+				if err != nil {
+					return nil, fmt.Errorf("error consuming new line byte %w", err)
+				}
 				buf.WriteByte('\n') // append it
 			}
 

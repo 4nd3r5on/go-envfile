@@ -95,7 +95,7 @@ func (u *Updater) handleSectionStart(lineIdx int64, parsedLine common.ParsedLine
 	return nil
 }
 
-func (u *Updater) handleSectionEnd(lineIdx int64, parsedLine common.ParsedLine) error {
+func (u *Updater) handleSectionEnd(lineIdx int64, _ common.ParsedLine) error {
 	u.currentSection = ""
 	u.Logger.Debug("section end", "section", u.currentSection, "line", lineIdx)
 
