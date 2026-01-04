@@ -218,7 +218,6 @@ API_KEY='secret-key'
 
 ## Roadmap
 
-- [ ] Add default quote option for updater
 - [ ] Improve updater strategy for variable placement
 - [ ] More testing for section features
 - [ ] More unit tests coverage

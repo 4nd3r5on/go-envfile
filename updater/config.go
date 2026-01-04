@@ -17,9 +17,19 @@ type Config struct {
 	Logger        *slog.Logger
 	Mode          UpdateMode
 	EnsureNewLine bool
+	DefaultQuote  byte
 
 	SectionStartComments map[string]string
 	SectionEndComments   map[string]string
+}
+
+var DefaultConfig = &Config{
+	Logger:               slog.Default(),
+	Mode:                 ModeReplace | ModeAdd | ModeMoveSection,
+	EnsureNewLine:        true,
+	DefaultQuote:         '"',
+	SectionStartComments: make(map[string]string),
+	SectionEndComments:   make(map[string]string),
 }
 
 type Option func(*Config)

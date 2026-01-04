@@ -12,9 +12,18 @@ type AddVariable struct {
 	Content string
 }
 
+// UpdateBlock represents a complete update operation for a variable.
+// Contains all patches needed to remove old lines and optionally insert new content.
+type UpdateBlock struct {
+	// Patches to apply to the file, ordered by line index
+	Patches []common.Patch
+	// If variable needs to be added in a different section
+	AddVariable *AddVariable
+}
+
 // FormatVar creates a formatted variable line from an update and optional original data.
 // Takes value from the update while preserving formatting from the original (like comment and prefix if exists).
-func FormatVar(update Update, orig *common.VariableData, ensureNewLine bool) string {
+func FormatVar(update Update, orig *common.VariableData, ensureNewLine bool, defaultQuote byte) string {
 	var (
 		prefix string
 		suffix string
@@ -38,7 +47,7 @@ func FormatVar(update Update, orig *common.VariableData, ensureNewLine bool) str
 	case orig != nil && orig.IsQuoted:
 		quote = orig.Quote
 	case common.HasSpaceChars(update.Value):
-		quote = '"'
+		quote = defaultQuote
 	}
 
 	value = update.Value
@@ -67,15 +76,6 @@ func FormatVar(update Update, orig *common.VariableData, ensureNewLine bool) str
 	}
 
 	return prefix + value + suffix
-}
-
-// UpdateBlock represents a complete update operation for a variable.
-// Contains all patches needed to remove old lines and optionally insert new content.
-type UpdateBlock struct {
-	// Patches to apply to the file, ordered by line index
-	Patches []common.Patch
-	// If variable needs to be added in a different section
-	AddVariable *AddVariable
 }
 
 // reconstructMultiLineValue reconstructs the complete value from multiple parsed lines.
@@ -112,6 +112,7 @@ func processVarUpdate(
 	update Update,
 	origLines []common.ParsedLine,
 	ensureNewLine bool,
+	defaultQuote byte,
 	logger *slog.Logger,
 ) UpdateBlock {
 	if len(origLines) == 0 {
@@ -120,7 +121,7 @@ func processVarUpdate(
 			Patches: []common.Patch{},
 			AddVariable: &AddVariable{
 				Section: update.Section,
-				Content: FormatVar(update, nil, ensureNewLine),
+				Content: FormatVar(update, nil, ensureNewLine, defaultQuote),
 			},
 		}
 	}
@@ -132,7 +133,7 @@ func processVarUpdate(
 			Patches: []common.Patch{},
 			AddVariable: &AddVariable{
 				Section: update.Section,
-				Content: FormatVar(update, nil, ensureNewLine),
+				Content: FormatVar(update, nil, ensureNewLine, defaultQuote),
 			},
 		}
 	}
@@ -185,7 +186,7 @@ func processVarUpdate(
 	}
 
 	// Format the new variable content
-	varContent := FormatVar(update, definitionLine.Variable, ensureNewLine)
+	varContent := FormatVar(update, definitionLine.Variable, ensureNewLine, defaultQuote)
 
 	// Case 2: Value needs updating, but section is correct - update in place
 	if !valCorrect && sectionCorrect {

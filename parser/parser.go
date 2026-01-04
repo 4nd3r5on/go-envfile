@@ -95,7 +95,7 @@ func (p *Parser) handleUnterminatedValue(line string) (common.ParsedLine, error)
 
 // handleCommentLine processes comment lines, including section markers
 func (p *Parser) handleCommentLine(line string) (common.ParsedLine, error) {
-	if !p.Config.IgnoreSections {
+	if !p.IgnoreSections {
 		if isSectionStart, data := common.MatchSectionStart(line); isSectionStart {
 			return p.handleSectionStart(line, data.Name, data.Comment), nil
 		}

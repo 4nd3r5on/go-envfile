@@ -35,10 +35,10 @@ func (p *FileParser) Next() (common.ParsedLine, error) {
 	p.CurrentIdx++
 
 	if p.keepNewLine {
-		return p.Parser.ParseLine(string(line))
+		return p.ParseLine(string(line))
 	}
 	clean := bytes.TrimRight(line, "\r\n")
-	return p.Parser.ParseLine(string(clean))
+	return p.ParseLine(string(clean))
 }
 
 func (p *FileParser) GetLineIdx() int64 { return p.CurrentIdx }
