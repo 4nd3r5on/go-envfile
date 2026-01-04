@@ -8,7 +8,7 @@ const (
 	ValueDoubleQuoted
 )
 
-// ValueData holds information about an extracted value
+// ValueData holds information about an extracted value.
 type ValueData struct {
 	Raw          string    // The raw value including quotes if present
 	Content      string    // The actual content (without quotes)
@@ -18,14 +18,14 @@ type ValueData struct {
 	IsTerminated bool      // Whether quotes were properly closed
 }
 
-// KeyData holds information about an extracted key
+// KeyData holds information about an extracted key.
 type KeyData struct {
 	Key   string
 	Start int
 	End   int
 }
 
-// VariableData holds information about a parsed variable
+// VariableData holds information about a parsed variable.
 type VariableData struct {
 	Key   KeyData
 	Value ValueData

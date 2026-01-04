@@ -5,7 +5,7 @@ type Span[T comparable] struct {
 	End   T
 }
 
-// ByteSpan = [start,end] byte offsets
+// ByteSpan = [start,end] byte offsets.
 type ByteSpan Span[int64]
 
 // Interfaces
@@ -32,7 +32,7 @@ const (
 	LineTypeSectionEnd
 )
 
-// VariableData contains parsed variable information
+// VariableData contains parsed variable information.
 type VariableData struct {
 	Key          string
 	Value        string
@@ -55,7 +55,7 @@ type SectionData struct {
 	Name      string
 }
 
-// ParsedLine represents a parsed line from .env file
+// ParsedLine represents a parsed line from .env file.
 type ParsedLine struct {
 	Type    LineType
 	RawLine string
@@ -73,7 +73,7 @@ type ParsedLine struct {
 // Updater
 
 // Patch represents changes that u need to put into the file
-// Warning: Insert And InsertAfter don't automatically add new lines
+// Warning: Insert And InsertAfter don't automatically add new lines.
 type Patch struct {
 	LineIdx      int64 // target line
 	ShouldInsert bool

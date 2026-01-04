@@ -45,6 +45,8 @@ func (u *Updater) processNewVariables() {
 func (u *Updater) distributeContentToSections(eofLine int64) {
 	var contentForNewSections string
 
+	var contentForNewSectionsSb48 strings.Builder
+
 	for sectionName, content := range u.addToSection {
 		if content == "" {
 			continue
@@ -54,9 +56,11 @@ func (u *Updater) distributeContentToSections(eofLine int64) {
 		if exists {
 			u.insertIntoExistingSection(sectionName, lastVarLine, content)
 		} else {
-			contentForNewSections += u.createSection(sectionName, content)
+			contentForNewSectionsSb48.WriteString(u.createSection(sectionName, content))
 		}
 	}
+
+	contentForNewSections += contentForNewSectionsSb48.String()
 
 	if contentForNewSections != "" {
 		u.appendToFileEnd(contentForNewSections, eofLine)
@@ -95,6 +99,7 @@ func (u *Updater) getOrCreatePatch(lineIdx int64) common.Patch {
 	if patch, exists := u.patchMap[lineIdx]; exists {
 		return patch
 	}
+
 	return common.Patch{LineIdx: lineIdx}
 }
 
@@ -107,6 +112,7 @@ func (u *Updater) createSection(name, content string) string {
 	sectionEnd := common.MakeSectionEnd(name, endComment, false)
 
 	var builder strings.Builder
+
 	builder.WriteString(sectionStart)
 	builder.WriteByte('\n')
 	builder.WriteString(content)
@@ -122,5 +128,6 @@ func getSectionComment(name string, commentMap map[string]string) string {
 	if comment, exists := commentMap[name]; exists && comment != "" {
 		return comment
 	}
+
 	return commentMap[""]
 }

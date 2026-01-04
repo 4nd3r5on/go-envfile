@@ -10,14 +10,14 @@ var (
 	SectionEndRe   = regexp.MustCompile(`^# \[SECTION_END:\s*([^]]+)\](.*)$`)
 )
 
-// MatchedSectionData holds information about a section marker
+// MatchedSectionData holds information about a section marker.
 type MatchedSectionData struct {
 	Name    string
 	Comment string
 }
 
 // MakeSectionStart creates a section start marker with optional inline comment.
-// Example: "# [SECTION: my_section] some comment"
+// Example: "# [SECTION: my_section] some comment".
 func MakeSectionStart(
 	name string,
 	comment string,
@@ -31,14 +31,16 @@ func MakeSectionStart(
 	if comment != "" {
 		s += " " + comment
 	}
+
 	if ensureNewLine {
 		s += "\n"
 	}
+
 	return s
 }
 
 // MakeSectionEnd creates a section end marker with optional inline comment.
-// Example: "# [SECTION_END: my_section] reason"
+// Example: "# [SECTION_END: my_section] reason".
 func MakeSectionEnd(
 	name string,
 	comment string,
@@ -52,14 +54,16 @@ func MakeSectionEnd(
 	if comment != "" {
 		s += " " + comment
 	}
+
 	if ensureNewLine {
 		s += "\n"
 	}
+
 	return s
 }
 
 // MatchSectionStart checks if a line is a section start marker
-// Returns true and section data if matched, false otherwise
+// Returns true and section data if matched, false otherwise.
 func MatchSectionStart(line string) (bool, MatchedSectionData) {
 	matches := SectionStartRe.FindStringSubmatch(line)
 	if matches == nil {
@@ -73,7 +77,7 @@ func MatchSectionStart(line string) (bool, MatchedSectionData) {
 }
 
 // MatchSectionEnd checks if a line is a section end marker
-// Returns true and section data if matched, false otherwise
+// Returns true and section data if matched, false otherwise.
 func MatchSectionEnd(line string) (bool, MatchedSectionData) {
 	matches := SectionEndRe.FindStringSubmatch(line)
 	if matches == nil {

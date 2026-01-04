@@ -27,12 +27,15 @@ func (u *Updater) handleValPart(lineIdx int64, parsedLine common.ParsedLine) err
 	if parsedLine.VariableValPart == nil {
 		return fmt.Errorf("line %d: variable part line detected but VariableValPart is nil", lineIdx)
 	}
+
 	if u.varState == nil {
 		return fmt.Errorf("line %d: variable part line detected but Updater.varState is nil (no var declaration? most likely a bug)", lineIdx)
 	}
+
 	u.sectionsLastVarLine[u.currentSection] = lineIdx
 	u.varState.LinesBuf = append(u.varState.LinesBuf, parsedLine)
 	u.varState.IsTerminated = parsedLine.VariableValPart.IsTerminated
+
 	return u.patchVar()
 }
 
@@ -40,6 +43,7 @@ func (u *Updater) patchVar() error {
 	if u.varState == nil {
 		return nil // nothing to patch
 	}
+
 	if !u.varState.IsTerminated {
 		return nil // not terminated yet
 	}
@@ -49,6 +53,7 @@ func (u *Updater) patchVar() error {
 		u.Logger.Debug("skipping variable (no update)", "key", u.varState.Key, "line", u.varState.DefinitionLine)
 
 		u.varState = nil
+
 		return nil
 	}
 
@@ -76,5 +81,6 @@ func (u *Updater) patchVar() error {
 	u.Logger.Debug("applied variable update", "key", u.varState.Key, "patches", len(updateBlock.Patches))
 
 	u.varState = nil
+
 	return nil
 }

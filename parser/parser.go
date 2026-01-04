@@ -14,6 +14,7 @@ var DefaultConfig = &Config{
 
 type Parser struct {
 	*Config
+
 	currentSection         *common.SectionData
 	unterminatedValueLines int
 	terminator             byte
@@ -25,15 +26,17 @@ func New(options ...Option) *Parser {
 	for _, option := range options {
 		option(p.Config)
 	}
+
 	return p
 }
 
 // ParseLine takes as an input line from an environment file and outputs parsed line
-// Lines from the file must be passed sequentially
+// Lines from the file must be passed sequentially.
 func (p *Parser) ParseLine(line string) (common.ParsedLine, error) {
 	if p.unterminatedValueLines > 0 {
 		return p.handleUnterminatedValue(line)
 	}
+
 	lineType := DetectLineType(line)
 	switch lineType {
 	case common.LineTypeComment:
@@ -47,13 +50,14 @@ func (p *Parser) ParseLine(line string) (common.ParsedLine, error) {
 	}
 }
 
-// handleUnterminatedValue processes continuation lines for unterminated multi-line values
+// handleUnterminatedValue processes continuation lines for unterminated multi-line values.
 func (p *Parser) handleUnterminatedValue(line string) (common.ParsedLine, error) {
 	terminator := FindTerminator(line, 0, p.terminator)
 
 	if terminator < 0 {
 		// Value continues on next line
 		p.unterminatedValueLines++
+
 		return common.ParsedLine{
 			Type:    common.LineTypeVal,
 			RawLine: line,
@@ -69,6 +73,7 @@ func (p *Parser) handleUnterminatedValue(line string) (common.ParsedLine, error)
 
 	// Value terminates on this line
 	val := line[:terminator]
+
 	suffix := ""
 	if terminator+1 < len(line) {
 		suffix = line[terminator+1:]
@@ -93,12 +98,13 @@ func (p *Parser) handleUnterminatedValue(line string) (common.ParsedLine, error)
 	return parsedLine, nil
 }
 
-// handleCommentLine processes comment lines, including section markers
+// handleCommentLine processes comment lines, including section markers.
 func (p *Parser) handleCommentLine(line string) (common.ParsedLine, error) {
 	if !p.IgnoreSections {
 		if isSectionStart, data := common.MatchSectionStart(line); isSectionStart {
 			return p.handleSectionStart(line, data.Name, data.Comment), nil
 		}
+
 		if isSectionEnd, data := common.MatchSectionEnd(line); isSectionEnd {
 			return p.handleSectionEnd(line, data.Name, data.Comment), nil
 		}
@@ -111,12 +117,13 @@ func (p *Parser) handleCommentLine(line string) (common.ParsedLine, error) {
 	}, nil
 }
 
-// handleSectionStart processes section start markers
+// handleSectionStart processes section start markers.
 func (p *Parser) handleSectionStart(line, name, comment string) common.ParsedLine {
 	p.currentSection = &common.SectionData{
 		Variables: make(map[string]struct{}),
 		Name:      name,
 	}
+
 	return common.ParsedLine{
 		Type:                         common.LineTypeSectionStart,
 		RawLine:                      line,
@@ -125,7 +132,7 @@ func (p *Parser) handleSectionStart(line, name, comment string) common.ParsedLin
 	}
 }
 
-// handleSectionEnd processes section end markers
+// handleSectionEnd processes section end markers.
 func (p *Parser) handleSectionEnd(line, name, comment string) common.ParsedLine {
 	parsedLine := common.ParsedLine{
 		Type:                         common.LineTypeSectionEnd,
@@ -141,7 +148,7 @@ func (p *Parser) handleSectionEnd(line, name, comment string) common.ParsedLine 
 	return parsedLine
 }
 
-// handleRawLine processes raw (non-parsed) lines
+// handleRawLine processes raw (non-parsed) lines.
 func (p *Parser) handleRawLine(line string) common.ParsedLine {
 	return common.ParsedLine{
 		Type:        common.LineTypeRaw,
@@ -150,12 +157,13 @@ func (p *Parser) handleRawLine(line string) common.ParsedLine {
 	}
 }
 
-// handleVariableLine processes variable assignment lines
+// handleVariableLine processes variable assignment lines.
 func (p *Parser) handleVariableLine(line string) (common.ParsedLine, error) {
 	data, err := ParseVariable(line)
 	if err != nil {
 		return common.ParsedLine{}, err
 	}
+
 	if p.currentSection != nil {
 		p.currentSection.Variables[data.Key.Key] = struct{}{}
 	}
@@ -168,6 +176,7 @@ func (p *Parser) handleVariableLine(line string) (common.ParsedLine, error) {
 	}
 
 	var suffix string
+
 	suffixStart := data.Value.End + 1
 	if suffixStart < len(line) {
 		suffix = line[suffixStart:]

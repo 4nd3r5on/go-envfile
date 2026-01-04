@@ -43,6 +43,7 @@ func FormatVar(update Update, orig *common.VariableData, ensureNewLine bool, def
 
 	// Determine quoting strategy
 	var quote byte
+
 	switch {
 	case orig != nil && orig.IsQuoted:
 		quote = orig.Quote
@@ -55,13 +56,16 @@ func FormatVar(update Update, orig *common.VariableData, ensureNewLine bool, def
 	// Escape quotes if quoting is used
 	if quote != 0 {
 		escaped := make([]byte, 0, len(value))
-		for i := 0; i < len(value); i++ {
+
+		for i := range len(value) {
 			switch value[i] {
 			case quote, '\\':
 				escaped = append(escaped, '\\')
 			}
+
 			escaped = append(escaped, value[i])
 		}
+
 		value = string(escaped)
 		value = string(quote) + value + string(quote)
 	}
@@ -117,6 +121,7 @@ func processVarUpdate(
 ) UpdateBlock {
 	if len(origLines) == 0 {
 		logger.Error("processVarUpdate called with empty origLines", "key", update.Key)
+
 		return UpdateBlock{
 			Patches: []common.Patch{},
 			AddVariable: &AddVariable{
@@ -129,6 +134,7 @@ func processVarUpdate(
 	definitionLine := origLines[0]
 	if definitionLine.Variable == nil {
 		logger.Error("definition line missing Variable data", "key", update.Key, "line", lineIdx)
+
 		return UpdateBlock{
 			Patches: []common.Patch{},
 			AddVariable: &AddVariable{
@@ -171,6 +177,7 @@ func processVarUpdate(
 	// Case 1: Both value and section are correct - no changes needed
 	if valCorrect && sectionCorrect {
 		logger.Debug("no changes needed for variable", "key", update.Key)
+
 		return UpdateBlock{
 			Patches: []common.Patch{},
 		}
@@ -178,7 +185,7 @@ func processVarUpdate(
 
 	// Create patches to remove all lines of the variable (definition + continuation lines)
 	patches := make([]common.Patch, len(origLines))
-	for i := 0; i < len(origLines); i++ {
+	for i := range origLines {
 		patches[i] = common.Patch{
 			LineIdx:    lineIdx + int64(i),
 			RemoveLine: true,

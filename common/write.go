@@ -2,6 +2,7 @@ package common
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -13,17 +14,21 @@ import (
 func patchAddNewLine(p Patch) Patch {
 	p.Insert = p.Insert + "\n"
 	p.InsertAfter = p.InsertAfter + "\n"
+
 	return p
 }
 
-// ScanLineOffsets is a wrapper for ScanLineOffsetsReader
+// ScanLineOffsets is a wrapper for ScanLineOffsetsReader.
 func ScanLineOffsets(path string, patches map[int64]Patch, logger *slog.Logger) (map[int64]ByteSpan, error) {
 	logger.Info("scanning line offsets", "path", path, "patch_count", len(patches))
+
 	f, err := os.Open(path)
 	if err != nil {
 		return nil, err
 	}
+
 	defer f.Close()
+
 	return ScanLineOffsetsReader(bufio.NewReader(f), patches, logger)
 }
 
@@ -35,6 +40,7 @@ func ScanLineOffsetsReader(r Reader, patches map[int64]Patch, logger *slog.Logge
 	}
 
 	out := make(map[int64]ByteSpan, len(patches))
+
 	var (
 		offset  int64 = 0
 		lineIdx int64 = 0
@@ -42,9 +48,10 @@ func ScanLineOffsetsReader(r Reader, patches map[int64]Patch, logger *slog.Logge
 
 	for {
 		_, fullLen, err := ReadLine(r)
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			break
 		}
+
 		if err != nil {
 			return nil, err
 		}
@@ -54,6 +61,7 @@ func ScanLineOffsetsReader(r Reader, patches map[int64]Patch, logger *slog.Logge
 				Start: offset,
 				End:   offset + fullLen,
 			}
+
 			logger.Debug("found patch line", "line", lineIdx, "start", offset, "end", offset+fullLen, "length", fullLen)
 		}
 
@@ -67,6 +75,7 @@ func ScanLineOffsetsReader(r Reader, patches map[int64]Patch, logger *slog.Logge
 			Start: offset,
 			End:   offset, // zero-length span at EOF
 		}
+
 		logger.Debug("found patch at EOF", "line", lineIdx, "start", offset, "end", offset)
 	}
 
@@ -78,6 +87,7 @@ func ScanLineOffsetsReader(r Reader, patches map[int64]Patch, logger *slog.Logge
 	}
 
 	logger.Info("scan complete", "total_lines", lineIdx, "spans_found", len(out))
+
 	return out, nil
 }
 
@@ -96,19 +106,23 @@ func ApplySinglePatch(file io.ReadSeeker, w io.Writer, p Patch, span ByteSpan, c
 		if err != nil {
 			return err
 		}
+
 		logger.Debug("wrote insert", "bytes", n)
 	}
 
 	if p.RemoveLine {
 		// skip original
 		logger.Debug("removing line, seeking to end", "from", *curOffset, "to", span.End)
+
 		if _, err := file.Seek(span.End, io.SeekStart); err != nil {
 			return err
 		}
+
 		*curOffset = span.End
 	} else {
 		// keep original
 		logger.Debug("keeping original line")
+
 		err := CopySpan(file, w, span.Start, span.End, curOffset, logger)
 		if err != nil {
 			return err
@@ -121,6 +135,7 @@ func ApplySinglePatch(file io.ReadSeeker, w io.Writer, p Patch, span ByteSpan, c
 		if err != nil {
 			return err
 		}
+
 		logger.Debug("wrote insert_after", "bytes", n)
 	}
 
@@ -143,6 +158,7 @@ func ProcessPatches(
 	for ln := range patches {
 		lines = append(lines, ln)
 	}
+
 	slices.Sort(lines)
 
 	logger.Info("processing patches", "count", len(lines), "lines", lines)
@@ -154,6 +170,7 @@ func ProcessPatches(
 		if !ok {
 			return fmt.Errorf("missing span for line %d", ln)
 		}
+
 		p := patches[ln]
 
 		logger.Debug(
@@ -174,13 +191,15 @@ func ProcessPatches(
 			"to", span.Start,
 		)
 
-		if err := CopySpan(in, w, curOffset, span.Start, &curOffset, logger); err != nil {
+		err := CopySpan(in, w, curOffset, span.Start, &curOffset, logger)
+		if err != nil {
 			return err
 		}
 
 		logger.Debug("applying patch", "line", ln)
 
-		if err := ApplySinglePatch(in, w, p, span, &curOffset, logger); err != nil {
+		err = ApplySinglePatch(in, w, p, span, &curOffset, logger)
+		if err != nil {
 			return err
 		}
 	}
@@ -192,7 +211,8 @@ func ProcessPatches(
 			"to", size,
 		)
 
-		if err := CopySpan(in, w, curOffset, size, &curOffset, logger); err != nil {
+		err := CopySpan(in, w, curOffset, size, &curOffset, logger)
+		if err != nil {
 			return err
 		}
 	} else {
@@ -204,6 +224,7 @@ func ProcessPatches(
 	}
 
 	logger.Info("patch processing complete", "final_offset", curOffset)
+
 	return nil
 }
 
@@ -220,52 +241,66 @@ func ApplyPatches(path string, patches map[int64]Patch, autoNewLine bool, logger
 
 	if len(patches) == 0 {
 		logger.Debug("no patches to apply")
+
 		return nil
 	}
 
 	if autoNewLine {
 		logger.Debug("applying auto-newline to patches")
+
 		for i, p := range patches {
 			patches[i] = patchAddNewLine(p)
 		}
 	}
 
 	logger.Debug("scanning line offsets")
+
 	spans, err := ScanLineOffsets(path, patches, logger)
 	if err != nil {
 		logger.Error("failed to scan line offsets", "error", err)
+
 		return err
 	}
+
 	logger.Debug("line offsets scanned successfully", "span_count", len(spans))
 
 	logger.Debug("opening input file", "path", path)
+
 	in, err := os.Open(path)
 	if err != nil {
 		logger.Error("failed to open input file", "path", path, "error", err)
+
 		return err
 	}
+
 	defer in.Close()
 
 	info, err := in.Stat()
 	if err != nil {
 		logger.Error("failed to stat input file", "path", path, "error", err)
+
 		return err
 	}
+
 	logger.Debug("input file info", "size", info.Size(), "mode", info.Mode())
 
 	tmpDir := filepath.Dir(path)
 	logger.Debug("creating temporary file", "dir", tmpDir)
+
 	tmp, err := os.CreateTemp(tmpDir, ".patch-*.tmp")
 	if err != nil {
 		logger.Error("failed to create temporary file", "dir", tmpDir, "error", err)
+
 		return err
 	}
+
 	tmpName := tmp.Name()
 	logger.Debug("temporary file created", "tmp_path", tmpName)
 
 	buf := bufio.NewWriter(tmp)
 
 	logger.Info("processing patches")
+
 	if err := ProcessPatches(
 		in,
 		info.Size(),
@@ -275,19 +310,25 @@ func ApplyPatches(path string, patches map[int64]Patch, autoNewLine bool, logger
 		logger,
 	); err != nil {
 		logger.Error("failed to process patches", "error", err)
+
 		return err
 	}
+
 	logger.Debug("patches processed successfully")
 
 	logger.Debug("flushing buffer")
+
 	if err := buf.Flush(); err != nil {
 		logger.Error("failed to flush buffer", "error", err)
+
 		return err
 	}
 
 	logger.Debug("syncing temporary file")
+
 	if err := tmp.Sync(); err != nil {
 		logger.Error("failed to sync temporary file", "error", err)
+
 		return err
 	}
 
@@ -297,17 +338,22 @@ func ApplyPatches(path string, patches map[int64]Patch, autoNewLine bool, logger
 	}
 
 	logger.Debug("closing temporary file")
+
 	if err := tmp.Close(); err != nil {
 		logger.Error("failed to close temporary file", "error", err)
+
 		return err
 	}
 
 	logger.Debug("renaming temporary file to target", "from", tmpName, "to", path)
+
 	if err := os.Rename(tmpName, path); err != nil {
 		logger.Error("failed to rename temporary file", "from", tmpName, "to", path, "error", err)
+
 		return err
 	}
 
 	logger.Info("patch application completed successfully", "path", path)
+
 	return nil
 }

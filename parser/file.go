@@ -9,6 +9,7 @@ import (
 
 type FileParser struct {
 	common.Parser
+
 	reader      *bufio.Reader
 	CurrentIdx  int64
 	keepNewLine bool
@@ -18,6 +19,7 @@ func NewFileParser(p common.Parser, reader *bufio.Reader, keepNewLine bool, opti
 	if p == nil {
 		p = New(options...)
 	}
+
 	return &FileParser{
 		Parser:      p,
 		reader:      reader,
@@ -37,7 +39,9 @@ func (p *FileParser) Next() (common.ParsedLine, error) {
 	if p.keepNewLine {
 		return p.ParseLine(string(line))
 	}
+
 	clean := bytes.TrimRight(line, "\r\n")
+
 	return p.ParseLine(string(clean))
 }
 

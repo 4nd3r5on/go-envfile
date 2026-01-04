@@ -354,11 +354,11 @@ func TestExtractKey(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got, gotErr := parser.ExtractKey(tt.line, tt.equalIdx)
-
 			if gotErr != nil {
 				if !tt.wantErr {
 					t.Errorf("ExtractKey() failed: %v", gotErr)
 				}
+
 				return
 			}
 
@@ -370,9 +370,11 @@ func TestExtractKey(t *testing.T) {
 			if got.Key != tt.want.Key {
 				t.Errorf("ExtractKey().Key = %q, want %q", got.Key, tt.want.Key)
 			}
+
 			if got.Start != tt.want.Start {
 				t.Errorf("ExtractKey().Start = %d, want %d", got.Start, tt.want.Start)
 			}
+
 			if got.End != tt.want.End {
 				t.Errorf("ExtractKey().End = %d, want %d", got.End, tt.want.End)
 			}

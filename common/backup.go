@@ -9,13 +9,14 @@ import (
 	"time"
 )
 
-// CreateBackup creates a timestamped backup of the file
+// CreateBackup creates a timestamped backup of the file.
 func CreateBackup(logger *slog.Logger, path string) error {
 	input, err := os.ReadFile(path)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return nil // No backup needed for non-existent file
 		}
+
 		return fmt.Errorf("failed to read file for backup: %w", err)
 	}
 
@@ -30,5 +31,6 @@ func CreateBackup(logger *slog.Logger, path string) error {
 	}
 
 	logger.Info("created backup", "backup_path", backupPath)
+
 	return nil
 }

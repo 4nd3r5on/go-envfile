@@ -7,10 +7,11 @@ import (
 	"os"
 	"strings"
 
+	"github.com/safeblock-dev/werr"
+
 	"github.com/4nd3r5on/go-envfile/common"
 	"github.com/4nd3r5on/go-envfile/parser"
 	"github.com/4nd3r5on/go-envfile/updater"
-	"github.com/safeblock-dev/werr"
 )
 
 type UpdateFileOptions struct {
@@ -28,8 +29,10 @@ func UpdateFile(
 	if opts.Logger == nil {
 		opts.Logger = slog.Default()
 	}
+
 	if opts.Backup {
-		if err := common.CreateBackup(opts.Logger, path); err != nil {
+		err := common.CreateBackup(opts.Logger, path)
+		if err != nil {
 			return werr.Wrapf(err, "error trying to create backup for file %q", path)
 		}
 	}
@@ -56,6 +59,7 @@ func UpdateFile(
 	}
 
 	opts.Logger.Info("patches summary", "count", len(patches))
+
 	for i, patch := range patches {
 		if patch.ShouldInsert {
 			opts.Logger.Debug(
@@ -65,6 +69,7 @@ func UpdateFile(
 				"length", len(patch.Insert),
 			)
 		}
+
 		if patch.ShouldInsertAfter {
 			opts.Logger.Debug(
 				"patch insert after",
@@ -76,15 +81,16 @@ func UpdateFile(
 	}
 
 	err = common.ApplyPatches(path, patches, false, opts.Logger)
+
 	return werr.Wrapf(err, "failed to apply patched %q", path)
 }
 
-// Alias for creating parser
+// Alias for creating parser.
 func NewParser(opts ...parser.Option) *parser.Parser {
 	return parser.New(opts...)
 }
 
-// Parse everything from a scanner to an array or parsed lines
+// Parse everything from a scanner to an array or parsed lines.
 func Parse(p common.Parser, s *bufio.Scanner) ([]common.ParsedLine, error) {
 	lines := make([]common.ParsedLine, 0)
 
@@ -93,6 +99,7 @@ func Parse(p common.Parser, s *bufio.Scanner) ([]common.ParsedLine, error) {
 		if err != nil {
 			return nil, err
 		}
+
 		lines = append(lines, line)
 	}
 
@@ -105,6 +112,7 @@ func ParseFile(filePath string, p common.Parser) ([]common.ParsedLine, error) {
 		log.Fatal(err)
 	}
 	defer file.Close()
+
 	return Parse(p, bufio.NewScanner(file))
 }
 
@@ -113,9 +121,11 @@ func ParseFile(filePath string, p common.Parser) ([]common.ParsedLine, error) {
 func LinesToVariableMap(lines []common.ParsedLine) map[string]string {
 	result := make(map[string]string)
 
-	var currentKey string
-	var currentValue strings.Builder
-	var inMultiline bool
+	var (
+		currentKey   string
+		currentValue strings.Builder
+		inMultiline  bool
+	)
 
 	for _, line := range lines {
 		switch line.Type {
@@ -124,6 +134,7 @@ func LinesToVariableMap(lines []common.ParsedLine) map[string]string {
 			if inMultiline && currentKey != "" {
 				result[currentKey] = currentValue.String()
 				currentValue.Reset()
+
 				inMultiline = false
 			}
 
@@ -136,6 +147,7 @@ func LinesToVariableMap(lines []common.ParsedLine) map[string]string {
 					// Single-line variable, store immediately
 					result[currentKey] = currentValue.String()
 					currentValue.Reset()
+
 					currentKey = ""
 				} else {
 					// Multiline variable starts
@@ -154,6 +166,7 @@ func LinesToVariableMap(lines []common.ParsedLine) map[string]string {
 					// Multiline variable ends
 					result[currentKey] = currentValue.String()
 					currentValue.Reset()
+
 					currentKey = ""
 					inMultiline = false
 				}

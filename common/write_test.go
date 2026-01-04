@@ -2,7 +2,6 @@ package common_test
 
 import (
 	"bufio"
-	"io"
 	"log/slog"
 	"reflect"
 	"strings"
@@ -12,7 +11,7 @@ import (
 )
 
 func TestScanLineOffsetsReader(t *testing.T) {
-	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	logger := slog.New(slog.DiscardHandler)
 
 	tests := []struct {
 		name    string
@@ -88,8 +87,10 @@ func TestScanLineOffsetsReader(t *testing.T) {
 				if !tt.wantErr {
 					t.Fatalf("unexpected error: %v", err)
 				}
+
 				return
 			}
+
 			if tt.wantErr {
 				t.Fatal("expected error, got nil")
 			}

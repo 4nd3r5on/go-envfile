@@ -2,6 +2,7 @@ package common
 
 import (
 	"bytes"
+	"errors"
 	"io"
 	"log/slog"
 )
@@ -20,10 +21,11 @@ func ReadLineWithEOL(reader Reader) ([]byte, error) {
 	for {
 		b, err := reader.ReadByte()
 		if err != nil {
-			if err == io.EOF && buf.Len() > 0 {
+			if errors.Is(err, io.EOF) && buf.Len() > 0 {
 				// Return last line without newline
 				return buf.Bytes(), nil
 			}
+
 			return nil, err
 		}
 
@@ -40,6 +42,7 @@ func ReadLineWithEOL(reader Reader) ([]byte, error) {
 				reader.ReadByte()   // consume \n
 				buf.WriteByte('\n') // append it
 			}
+
 			return buf.Bytes(), nil
 		}
 	}
@@ -54,7 +57,7 @@ func ReadLine(r Reader) ([]byte, int64, error) {
 	for {
 		b, err := r.ReadByte()
 		if err != nil {
-			if err == io.EOF {
+			if errors.Is(err, io.EOF) {
 				if len(buf) == 0 {
 					// nothing to return
 					return nil, 0, io.EOF
@@ -62,6 +65,7 @@ func ReadLine(r Reader) ([]byte, int64, error) {
 				// EOF after some bytes — no trailing newline
 				return buf, int64(len(buf)), nil
 			}
+
 			return nil, 0, err
 		}
 
@@ -80,10 +84,12 @@ func ReadLine(r Reader) ([]byte, int64, error) {
 				if rerr != nil {
 					return nil, 0, rerr
 				}
+
 				return buf, int64(len(buf)) + 2, nil
 			}
 			// Not a CRLF sequence — treat '\r' as regular byte
 			buf = append(buf, b)
+
 			continue
 		}
 
@@ -99,24 +105,30 @@ func CopySpan(file io.ReadSeeker, w io.Writer, start, end int64, curOffset *int6
 
 	if length == 0 {
 		logger.Debug("skip copy - zero length")
+
 		return nil
 	}
 
 	if *curOffset != start {
 		logger.Debug("seeking to start", "from", *curOffset, "to", start)
+
 		if _, err := file.Seek(start, io.SeekStart); err != nil {
 			return err
 		}
+
 		*curOffset = start
 	}
 
 	toCopy := end - start
+
 	n, err := io.CopyN(w, file, toCopy)
 	if err != nil {
 		return err
 	}
 
 	logger.Debug("copied bytes", "count", n)
+
 	*curOffset = end
+
 	return nil
 }

@@ -3,7 +3,7 @@
 # Source: https://github.com/ccoVeille/golangci-lint-config-examples/
 # Author: @ccoVeille
 # License: MIT
-# Variant: 90-daredevil
+# Variant: 80-reckless
 # Version: v2.0.0
 #
 version: "2"
@@ -50,7 +50,7 @@ issues:
   # Maximum count of issues with the same text.
   # Set to 0 to disable.
   # Default: 3
-  max-same-issues: 5
+  max-same-issues: 0
   # Make issues output unique by line.
   # Default: true
   uniq-by-line: false
@@ -98,6 +98,66 @@ linters:
 
     gocritic:
       enable-all: true
+      disabled-checks:
+        # Detects comments with non-idiomatic formatting.
+        # https://go-critic.com/overview.html#commentformatting
+        # Reason: Duplicate with other linters
+        - commentFormatting
+
+        # Runs user-defined rules using ruleguard linter.
+        # https://go-critic.com/overview.html#ruleguard
+        # Reason: we don't need it
+        - ruleguard
+
+        # Detects when default case in switch isn't on 1st or last position.
+        # https://go-critic.com/overview.html#defaultcaseorder
+        # Reason: we don't care
+        - defaultCaseOrder
+
+        # Detects empty string checks that can be written more idiomatically.
+        # https://go-critic.com/overview.html#emptystringtest
+        # Reason: we don't want to enforce it, using len(s) == 0 is ok
+        - emptyStringTest
+
+        # Detects unwanted dependencies on the evaluation order.
+        # https://go-critic.com/overview.html#evalorder
+        # Reason: require code rewrite for almost nothing
+        - evalOrder
+
+        # Detects when imported package names shadowed in the assignments.
+        # https://go-critic.com/overview.html#importshadow
+        # Reason: require code rewrite for almost nothing
+        - importShadow
+
+        # Detects if function parameters could be combined by type and suggest the way to do it.
+        # https://go-critic.com/overview.html#paramtypecombine
+        # Reason: too opinionated
+        - paramTypeCombine
+
+        # Detects expressions like []rune(s)[0] that may cause unwanted rune slice allocation.
+        # https://go-critic.com/overview.html#preferdecoderune
+        # Reason: too opinionated
+        - preferDecodeRune
+
+        # Detects WriteRune calls with rune literal argument that is single byte and reports to use WriteByte instead.
+        # https://go-critic.com/overview.html#preferwritebyte
+        # Reason: too opinionated
+        - preferWriteByte
+
+        # Detects loops that copy big objects during each iteration.
+        # https://go-critic.com/overview.html#rangevalcopy
+        # Reason: we don't care that much about RAM
+        - rangeValCopy
+
+        # Detects TODO comments without detail/assignee.
+        # https://go-critic.com/overview.html#todocommentwithoutdetail
+        # Reason: no need
+        - todoCommentWithoutDetail
+
+        # Ensures that `//nolint` comments include an explanation.
+        # https://go-critic.com/overview.html#whynolint
+        # Reason: nolintlint already enforces it
+        - whyNoLint
 
     revive:
       enable-all-rules: true
@@ -118,6 +178,32 @@ linters:
             - "checkPrivateReceivers"
             # make error messages clearer
             - "sayRepetitiveInsteadOfStutters"
+
+        # this linter completes errcheck linter, it will report method called without handling the error
+        # https://github.com/mgechev/revive/blob/master/RULES_DESCRIPTIONS.md#unhandled-error
+        - name: unhandled-error
+          arguments: # here are the exceptions we don't want to be reported
+            - "fmt.Print.*"
+            - "fmt.Fprint.*"
+            - "bytes.Buffer.Write"
+            - "bytes.Buffer.WriteByte"
+            - "bytes.Buffer.WriteString"
+            - "strings.Builder.WriteString"
+            - "strings.Builder.WriteRune"
+
+        # disable everything we don't want
+        - name: line-length-limit
+          disabled: true
+        - name: argument-limit
+          disabled: true
+        - name: max-public-structs
+          disabled: true
+        - name: function-result-limit
+          disabled: true
+        - name: function-length
+          disabled: true
+        - name: empty-lines
+          disabled: true
 
     dupword:
       # Keywords used to ignore detection.

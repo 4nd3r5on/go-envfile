@@ -29,6 +29,7 @@ type VariableState struct {
 
 type Updater struct {
 	*Config
+
 	// input
 	updateMap map[string]Update
 	// updater state
@@ -51,6 +52,7 @@ func NewUpdater(updates []Update, options ...Option) (*Updater, error) {
 		if _, exists := updateMap[update.Key]; exists {
 			return nil, fmt.Errorf("duplicate update for key %q: each key must appear only once in updates", update.Key)
 		}
+
 		updateMap[update.Key] = update
 		cfg.Logger.Debug("registered update", "key", update.Key, "section", update.Section)
 	}
@@ -85,14 +87,17 @@ func (u *Updater) handleSectionStart(lineIdx int64, parsedLine common.ParsedLine
 	if parsedLine.SectionData == nil {
 		return fmt.Errorf("line %d: section start detected but SectionData is nil", lineIdx)
 	}
+
 	u.currentSection = parsedLine.SectionData.Name
 	u.sectionsLastVarLine[u.currentSection] = lineIdx
 	u.Logger.Debug("entered section", "section", u.currentSection, "line", lineIdx)
+
 	return nil
 }
 
 func (u *Updater) handleSectionEnd(lineIdx int64, parsedLine common.ParsedLine) error {
 	u.currentSection = ""
 	u.Logger.Debug("section end", "section", u.currentSection, "line", lineIdx)
+
 	return nil
 }

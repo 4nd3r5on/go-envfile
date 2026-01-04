@@ -3,7 +3,6 @@ package common_test
 import (
 	"bufio"
 	"bytes"
-	"io"
 	"log/slog"
 	"strings"
 	"testing"
@@ -113,14 +112,18 @@ func TestReadLine(t *testing.T) {
 				if !tt.wantErr {
 					t.Errorf("ReadLine() failed: %v", gotErr)
 				}
+
 				return
 			}
+
 			if tt.wantErr {
 				t.Fatal("ReadLine() succeeded unexpectedly")
 			}
+
 			if !bytes.Equal(got, tt.want) {
 				t.Errorf("ReadLine() content = %q, want %q", got, tt.want)
 			}
+
 			if got2 != tt.wantLen {
 				t.Errorf("ReadLine() length = %v, want %v", got2, tt.wantLen)
 			}
@@ -129,7 +132,8 @@ func TestReadLine(t *testing.T) {
 }
 
 func TestCopySpan(t *testing.T) {
-	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	logger := slog.New(slog.DiscardHandler)
+
 	tests := []struct {
 		name      string
 		data      string
@@ -201,8 +205,10 @@ func TestCopySpan(t *testing.T) {
 				if !tt.wantErr {
 					t.Errorf("CopySpan() failed: %v", gotErr)
 				}
+
 				return
 			}
+
 			if tt.wantErr {
 				t.Fatal("CopySpan() succeeded unexpectedly")
 			}
@@ -218,7 +224,7 @@ func TestCopySpan(t *testing.T) {
 	}
 }
 
-// Helper function to create int64 pointers
+// Helper function to create int64 pointers.
 func ptr(i int64) *int64 {
 	return &i
 }

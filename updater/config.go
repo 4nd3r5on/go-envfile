@@ -43,13 +43,13 @@ func SetEnsureNewLine(v bool) Option {
 }
 
 // As a parameter takes map of section name : comment
-// If section name is empty -- applied by default for every section
+// If section name is empty -- applied by default for every section.
 func SetSectionStartComments(comments map[string]string) Option {
 	return func(c *Config) { maps.Copy(c.SectionStartComments, comments) }
 }
 
 // As a parameter takes map of section name : comment
-// If section name is empty -- applied by default for every section
+// If section name is empty -- applied by default for every section.
 func SetSectionEndComments(comments map[string]string) Option {
 	return func(c *Config) { maps.Copy(c.SectionEndComments, comments) }
 }
