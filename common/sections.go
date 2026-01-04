@@ -27,16 +27,21 @@ func MakeSectionStart(
 		return ""
 	}
 
-	s := "# [SECTION: " + name + "]"
+	var sb strings.Builder
+	sb.WriteString("# [SECTION: ")
+	sb.WriteString(name)
+	sb.WriteByte(']')
+
 	if comment != "" {
-		s += " " + comment
+		sb.WriteByte(' ')
+		sb.WriteString(comment)
 	}
 
 	if ensureNewLine {
-		s += "\n"
+		sb.WriteByte('\n')
 	}
 
-	return s
+	return sb.String()
 }
 
 // MakeSectionEnd creates a section end marker with optional inline comment.
@@ -50,16 +55,21 @@ func MakeSectionEnd(
 		return ""
 	}
 
-	s := "# [SECTION_END: " + name + "]"
+	var sb strings.Builder
+	sb.WriteString("# [SECTION_END: ")
+	sb.WriteString(name)
+	sb.WriteByte(']')
+
 	if comment != "" {
-		s += " " + comment
+		sb.WriteByte(' ')
+		sb.WriteString(comment)
 	}
 
 	if ensureNewLine {
-		s += "\n"
+		sb.WriteByte('\n')
 	}
 
-	return s
+	return sb.String()
 }
 
 // MatchSectionStart checks if a line is a section start marker
