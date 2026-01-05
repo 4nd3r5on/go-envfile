@@ -64,7 +64,8 @@ func TestScanLineOffsetsReader(t *testing.T) {
 			patches: map[int64]common.Patch{
 				5: {},
 			},
-			want: map[int64]common.ByteSpan{},
+			want:    nil,
+			wantErr: true,
 		},
 		{
 			name:  "patch index out of range",
