@@ -3,7 +3,10 @@ package common
 
 //revive:enable:var-naming
 
-import "unicode"
+import (
+	"strings"
+	"unicode"
+)
 
 // SkipSpaces returns the first index after spaces (starts skipping from pos)
 // Returns len(line) if all remaining characters are spaces.
@@ -73,4 +76,21 @@ func HasSpaceChars(str string) bool {
 	}
 
 	return false
+}
+
+func ToUpperSnake(s string) string {
+	var b strings.Builder
+	b.Grow(len(s) * 2)
+
+	for i, r := range s {
+		if unicode.IsUpper(r) {
+			if i > 0 {
+				b.WriteByte('_')
+			}
+			b.WriteRune(unicode.ToUpper(r))
+			continue
+		}
+		b.WriteRune(unicode.ToUpper(r))
+	}
+	return b.String()
 }
